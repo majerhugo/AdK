@@ -53,6 +53,10 @@ class Algorithms:
         if uv/(nu*nv) > 1:
             return abs(acos(1))
 
+        # Round up to -1 if smaller
+        if uv/(nu*nv) < -1:
+            return abs(acos(-1))
+
         # Angle
         return abs(acos(uv/(nu*nv)))
 
@@ -77,7 +81,7 @@ class Algorithms:
 
             else:
                 # Colinear point
-                # Investigate if point on the boundary / vertex
+                # Investigate if point on the boundary/vertex
                 if (q.x()-pol[i].x() )* (q.x()-pol[i+1].x()) <= 0 and (q.y()-pol[i].y()) * (q.y()-pol[i+1].y()) <= 0:
                     return 1
 
@@ -110,17 +114,23 @@ class Algorithms:
             vx_r = pol[i+1].x() - q.x()
             vy_r = pol[i+1].y() - q.y()
 
-            # Right ray
-            if (uy_r > 0) != (vy_r > 0):
+            # Fix for horizontal edges (dividing by 0)
+            if (uy_r - vy_r) == 0:
+                x_m = 0
+            else:
                 x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
-                if x_m > 0:
-                    k_r += 1
+
+            # Right ray
+            if (uy_r > 0) != (vy_r > 0) and x_m > 0:
+                #x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
+                #if x_m > 0:
+                k_r += 1
 
             # Left ray
-            if (uy_r < 0) != (vy_r < 0):
-                x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
-                if x_m < 0:
-                    k_l += 1
+            elif (uy_r < 0) != (vy_r < 0) and x_m < 0:
+                #x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
+                #if x_m < 0:
+                k_l += 1
 
         # Point on boundary
         if (k_l % 2) != (k_r % 2):

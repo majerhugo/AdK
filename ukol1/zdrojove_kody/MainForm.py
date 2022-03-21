@@ -7,53 +7,53 @@ from PyQt6.QtGui import *
 #from PyQt6.QtGui import QIcon
 import algorithms
 from algorithms import Algorithms
-
+from draw import Draw
 
 class Ui_MainForm(object):
     def setupUi(self, MainForm):
         MainForm.setObjectName("MainForm")
         MainForm.resize(942, 600)
-        self.horizontalLayout = QtWidgets.QHBoxLayout(MainForm)
-        self.horizontalLayout.setObjectName("horizontalLayout")
         self.Canvas = Draw(MainForm)
+        self.Canvas.setGeometry(QtCore.QRect(9, 9, 774, 582))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Preferred)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
         sizePolicy.setHeightForWidth(self.Canvas.sizePolicy().hasHeightForWidth())
         self.Canvas.setSizePolicy(sizePolicy)
         self.Canvas.setObjectName("Canvas")
-        self.horizontalLayout.addWidget(self.Canvas)
-        self.verticalLayout = QtWidgets.QVBoxLayout()
+        self.widget = QtWidgets.QWidget(MainForm)
+        self.widget.setGeometry(QtCore.QRect(800, 10, 131, 581))
+        self.widget.setObjectName("widget")
+        self.verticalLayout = QtWidgets.QVBoxLayout(self.widget)
+        self.verticalLayout.setContentsMargins(0, 0, 0, 0)
         self.verticalLayout.setObjectName("verticalLayout")
-        self.pushButton_3 = QtWidgets.QPushButton(MainForm)
+        self.pushButton_3 = QtWidgets.QPushButton(self.widget)
         self.pushButton_3.setObjectName("pushButton_3")
         self.verticalLayout.addWidget(self.pushButton_3)
         spacerItem = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout.addItem(spacerItem)
-        self.pushButton_4 = QtWidgets.QPushButton(MainForm)
+        self.pushButton_4 = QtWidgets.QPushButton(self.widget)
         self.pushButton_4.setObjectName("pushButton_4")
         self.verticalLayout.addWidget(self.pushButton_4)
         spacerItem1 = QtWidgets.QSpacerItem(20, 118, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout.addItem(spacerItem1)
-        self.pushButton_2 = QtWidgets.QPushButton(MainForm)
-        self.pushButton_2.setObjectName("pushButton_2")
-        self.verticalLayout.addWidget(self.pushButton_2)
-        self.label = QtWidgets.QLabel(MainForm)
-        self.label.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
-        self.label.setObjectName("label")
-        self.verticalLayout.addWidget(self.label)
-        spacerItem2 = QtWidgets.QSpacerItem(20, 48, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
+        self.comboBox = QtWidgets.QComboBox(self.widget)
+        self.comboBox.setObjectName("comboBox")
+        self.comboBox.addItem("")
+        self.comboBox.addItem("")
+        self.verticalLayout.addWidget(self.comboBox)
+        spacerItem2 = QtWidgets.QSpacerItem(20, 248, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Expanding)
         self.verticalLayout.addItem(spacerItem2)
-        self.pushButton = QtWidgets.QPushButton(MainForm)
+        self.pushButton = QtWidgets.QPushButton(self.widget)
         self.pushButton.setObjectName("pushButton")
         self.verticalLayout.addWidget(self.pushButton)
-        self.horizontalLayout.addLayout(self.verticalLayout)
 
         self.retranslateUi(MainForm)
         self.pushButton_3.clicked.connect(self.input) # type: ignore
         self.pushButton_4.clicked.connect(self.draw_point) # type: ignore
-        self.pushButton_2.clicked.connect(self.change_algorithm) # type: ignore
         self.pushButton.clicked.connect(self.analyze) # type: ignore
+        #self.comboBox.currentIndexChanged.connect(self.changeAlgorithm)
+
         QtCore.QMetaObject.connectSlotsByName(MainForm)
 
     def retranslateUi(self, MainForm):
@@ -61,8 +61,9 @@ class Ui_MainForm(object):
         MainForm.setWindowTitle(_translate("MainForm", "Widget"))
         self.pushButton_3.setText(_translate("MainForm", "INPUT SHP"))
         self.pushButton_4.setText(_translate("MainForm", "DRAW POINT"))
-        self.pushButton_2.setText(_translate("MainForm", "WINDING NUMBER / RAY"))
-        self.label.setText(_translate("MainForm", "Winding Number"))
+        self.comboBox.setCurrentText(_translate("MainForm", "WINDING NUMBER"))
+        self.comboBox.setItemText(0, _translate("MainForm", "WINDING NUMBER"))
+        self.comboBox.setItemText(1, _translate("MainForm", "RAY CROSSING"))
         self.pushButton.setText(_translate("MainForm", "ANALYZE"))
 
     def input(self):
@@ -75,13 +76,6 @@ class Ui_MainForm(object):
 
     def draw_point(self):
         self.Canvas.setSource()
-
-    def change_algorithm(self):
-        self.Canvas.switchMethod()
-        if self.Canvas.method:
-            self.label.setText("Winding Number")
-        else:
-            self.label.setText("Ray Crossing")
 
     def analyze(self):
         # Get point and polygon
@@ -100,14 +94,14 @@ class Ui_MainForm(object):
 
             count += 1
 
-            if self.Canvas.method:
+            if self.comboBox.currentIndex() == 0:
                 # Use Winding Number Algorithm
                 res = a.windingNumber(q, polygons)
 
                 # Store the result in list
                 self.Canvas.results[count] = res
 
-            else:
+            if self.comboBox.currentIndex() == 1:
                 # Use Ray Crossing
                 res = a.reducedRayCrossing(q, polygons)
 
