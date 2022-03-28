@@ -114,22 +114,19 @@ class Algorithms:
             vx_r = pol[i+1].x() - q.x()
             vy_r = pol[i+1].y() - q.y()
 
-            # Fix for horizontal edges (dividing by 0)
+            # Skip horizontal edges
             if (uy_r - vy_r) == 0:
-                x_m = 0
+                continue
+            # Compute intersection's x coordinate
             else:
                 x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
 
             # Right ray
             if (uy_r > 0) != (vy_r > 0) and x_m > 0:
-                #x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
-                #if x_m > 0:
                 k_r += 1
 
             # Left ray
             elif (uy_r < 0) != (vy_r < 0) and x_m < 0:
-                #x_m = (ux_r * vy_r - vx_r * uy_r) / (uy_r - vy_r)
-                #if x_m < 0:
                 k_l += 1
 
         # Point on boundary

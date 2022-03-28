@@ -136,10 +136,6 @@ class Draw(QWidget):
             # Initialise condition for point drawing
             self.point = not(self.point)
 
-        def switchMethod(self):
-            # Initialise condition for method switching
-            self.method = not(self.method)
-
         def getQ(self):
             # Get q
             return self.q
@@ -147,7 +143,3 @@ class Draw(QWidget):
         def getPolygon(self):
             # Get polygon
             return self.pol
-
-
-
-5
