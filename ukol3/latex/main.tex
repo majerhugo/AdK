@@ -1,0 +1,464 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{parskip}
+\renewcommand{\baselinestretch}{1.35}
+\usepackage[slovak]{babel}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{gensymb}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx, caption}
+\graphicspath{ {./images/} }
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+
+\title{\textbf{Úkol č. 3: Digitálny model terénu a jeho analýzy}}
+\author{Hugo Majer, Júlia Šušková}
+
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%% TITUL %%%%%%%%%%%%%%%%%%%%%%%%
+\pagenumbering{gobble}
+\maketitle
+
+\newpage
+\pagenumbering{arabic}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ZADANIE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Zadanie}
+\textbf{Úloha č. 3: Digitální model terénu.}
+
+\textit{Vstup: množina $P = \{p_1, ..., p_n\}$, $p_i = \{x_i, y_i, z_i\}$.}
+
+\textit{Výstup: polyedrický DMT nad množinou $P$ představovaný vrstevnicemi doplněný vizualizací sklonu trojúhelníků a jejich expozicí.}
+
+Metodou inkrementální konstrukce vytvořte nad množinou P vstupních bodů 2D Delaunay triangulaci. Jako vstupní data použijte existující geodetická data (alespoň 300 bodů) popř. navrhněte algoritmus pro generování syntetických vstupních dat představujících významné terénní tvary (kupa, údolí, spočinek, hřbet, ...).
+
+Vstupní množiny bodů včetně níže uvedených výstupů vhodně vizualizujte. Grafické rozhraní realizujte s využitím frameworku QT. Dynamické datové struktury implementujte s využitím STL.
+
+Nad takto vzniklou triangulací vygenerujte polyedrický digitální model terénu. Dále proveďte tyto analýzy:
+\begin{itemize}
+    \item \parindent S využitím lineární interpolace vygenerujte vrstevnice se zadaným krokem a v zadaném intervalu, proveďte jejich vizualizaci s rozlišením zvýrazněných vrstevnic.
+    \item \parindent Analyzujte sklon digitálního modelu terénu, jednotlivé trojúhelníky vizualizujte v závislosti na jejich sklonu.
+    \item \parindent Analyzujte expozici digitálního modelu terénu, jednotlivé trojúhelníky vizualizujte v závislosti na jejich expozici ke světové straně.
+\end{itemize}
+
+Zhodnoťte výsledný digitální model terénu z kartografického hlediska, zamyslete se nad slabinami algoritmu založeného na 2D Delaunay triangulaci. Ve kterých situacích (různé terénní tvary) nebude dávat vhodné výsledky? Tyto situace graficky znázorněte.
+
+Zhodnocení činnosti algoritmu včetně ukázek proveďte alespoň na 3 strany formátu A4.
+\section{Údaje o bonusových úlohách}
+Neboli riešené žiadne bonusové úlohy.
+
+
+
+\setlength{\parindent}{1cm}
+\newpage
+\section{Polyedrický digitálny model terénu, triangulácia}
+Digitálny model terénu (DMT) je digitálna reprezentácia zemského povrchu v pamäti počítača, ktorá je zložená z nameraných dát a interpolačného algoritmu, ktorý umožňuje odvodzovať výšky medziľahlých bodov. V ľubovoľnom bode modelu je možné odvodiť nadmorskú výšku.\newline
+Jedným z typov DMT je polyedrický DMT nazývaný TIN (Triangulated Irregular Network - Nepravidelná sieť trojuholníkov), ktorý reprezentuje povrch pomocou nepravidelných trojuholníkov, čím poskytuje plne definovaný a spojitý model terénu. Trojuholníková sieť je vytvorená trianguláciou za použitia triangulačného algoritmu. Algoritmus prekladá trojicou vrcholov rovinu v $R^3$, vzniká tak nepravidelný mnohosten (polyedr), ktorý sa primyká k terénu.
+\subsection{Triangulácia}
+Trianguláciou nad zadanou množinou bodov $P = \{P_1, P_2, ..., P_n\}$ rozumieme planárne rozdelenie roviny na $m$ trojuholníkov $T = \{T_1, T_2, ..., T_m\}$ pričom platí:
+\begin{itemize}
+    \item \parindent Ľubovoľné dva trojuholníky $T_i$, $T_j \in T$ majú spoločnú nanajvýš hranu alebo vrchol.
+    \item \parindent Zjednotenie trojuholníkov je súvislá množina v 2D.
+    \item \parindent Vo vnútri žiadneho trojuholníku neleží žiadny ďalší bod z $P$.
+\end{itemize}
+Väčšina metod tvorby triangulácie generuje čo najviac rovnostranné trojuholníky. V takomto prípade každý trojuholník by mal čo najlepšie lokálne reprezentovať povrch, tj. najlepšie sa k nemu primykať.
+
+\subsection{Delaunay triangulácia}
+Bola vyvinutá Borisom Delaunaym v roku 1934 a dnes sa jedná o najpoužívanejšiu metódu triangulácie, obzvlášť v oblasti GIS. Delaunay triangulácia $DT$ spočíva v tom, že vo vnútri opísanej kružnice ku ľubovoľnému trojuholníku $T \in DT$ neleží žiadny iný bod zo vstupnej množiny. Je nutné podotknúť, že $DT$ nemusí byť jednoznačná a môže nastať viacero riešení a to práve vtedy, ak na opísanej kružnici sa nachádza štvrtý bod. Cieľom $DT$ je vytvoriť také trojuholníky, aby najmenší uhol v každom trojuholníku bol maximálny avšak pre túto metódu neplatí, že by sa minimalizoval maximálny uhol v trojuholníku. Výsledné trojuholníky sa svojim tvarom blížia rovnostranným. Jej hranicu predstavuje konvexná obálka.
+
+\newpage
+\section{Delaunayho triangulácia inkrementálnou konštrukciou}
+Myšlienkou je vytvoriť Delaunay trianguláciu $DT$ vkladaním jedného bodu po druhom. Zachováva sa doposiaľ vytvorená $DT$ a po nájdení ďalšieho bodu sa triangulácia jednoducho aktualizuje. Algoritmus začína incializáciou, ktorá môže predstavovať výber náhodného bodu zo vstupnej množiny bodov alebo výberom bodu s minimálnou súradnicou $x$ (varianta použitá v rámci tejto práce), označme ho $P_1$. K tomuto bodu nájdeme najbližší bod $P_2$ zo vstupnej množiny bodov, tj. bod s najmenšou Euklidovou vzdialenosťou, čím vytvoríme prvú hranu $e = (P_1, P_2)$, ktorá je orientovaná. 
+
+Následne hľadáme Delaunayho bod $\underline{P}$, ktorý leží v ľavej polorovine $\sigma_L$ voči hrane $e$ a ktorý minimalizuje polomer $r$ kružnice $k$ opísanej hrane $e$ a tomuto bodu:
+\begin{equation*}
+\underline{P} = \text{arg min}_{\, \forall P_i(e) \in \sigma_L} \; \; r'(k_i), \quad \, k_i = (e, P_i), \; \; P_i(e) \in \sigma_L
+\end{equation*}
+
+\noindent Polohu bodu $P_i$ voči hrane $e = (P_1, P_2)$ určíme za pomoci vektorového súčinu smerového vektoru hrany $e$ (označme $\vec{u}$) a vektoru definovaným bodom $P_i$ a bodom $P_1$ (označme $\vec{v}$).
+\newline Stanovme, že $P_i=[x_p,y_p]$, $P_1=[x_1,y_1]$ a $P_2=[x_2,y_2]$, potom:
+\begin{align}
+    \nonumber&\vec{u}=(x_2-x_1,y_2-y_1)\\
+    \nonumber&\vec{v}=(x_p-x_1,y_p-y_1)
+\end{align}
+\noindent Vektorový súčin môžeme zapísať maticovo a vypočítať pomocou determinantu, ktorého znamienko určí, v ktorej polrovine voči hrane $e$ sa bod $P$ nachádza:
+\begin{equation*}
+t=\begin{vmatrix} u_x & u_y \\ v_x & v_y  \end{vmatrix}=u_x*v_y-v_x*u_y \Rightarrow
+\begin{cases}
+    t>0, \quad P(e)  \in \sigma_L \\
+    t=0, \quad P  \in p \; \text{(kolinearita)}\\
+    t<0, \quad P(e)  \in \sigma_R
+\end{cases}
+\end{equation*}
+
+Je nutné dodať, že korektný Delaunayho bod $\underline{P}$ nemusí nutne generovať kružnicu $k = (e,P_i)$ s minimálnym polomerom $r$, ale uprednostňuje sa vlastnosť, kedy stred kružnice $S$ leží v inej polrovine voči hrane $e$ ako bod $P_i$, tj. v pravej polrovine, $S(e) \in \sigma_R$. Preferencia sa v takomto prípade zabezpečí negáciou polomeru $r$:
+\begin{equation*}
+r'=
+\begin{cases}
+    -r, \quad S(e) \in \sigma_R\\
+    r, \quad \: \: \, \, S(e) \in \sigma_L
+\end{cases}
+\end{equation*}
+\noindent Z tohto vyplýva, že je nutné testovať, v ktorej polrovine $S$ voči hrane $e$ leží. Za týmto účelom musíme spočítať, kde leží stred $S$ kružnice $k = (e,P_i)$ a jej polomer $r$. \newline
+\newpage
+\noindent Stanovme, že kružnica $k$ so stredom $S = [m, n]$ je daná trojicou bodov $P_1 = [x_1, y_1]$, $P_2 = [x_2, y_2]$, $P_3 = [x_3, y_3]$, potom:
+\begin{equation*}
+\openup 1ex
+\begin{gathered}
+\nonumber m = 0,5 \cdot \frac{k_{12}(-k_4)+k_{11}k_5 - (k_{10} + k_4k_5)k_6}{x_3(-k_4)+x_2k_5+x_1(-k_6)}\\
+\nonumber n = 0,5 \cdot \frac{k_1(-k_9) + k_2k_8+k_3(-k_7)}{y_1(-k_9)+y_2k_8+y_3(-k_7)}\\
+\nonumber r = \sqrt{(x_1 - m)^2 + (y_1 - n)^2},
+\end{gathered}
+\end{equation*}
+kde
+\begin{equation*}
+\openup 1ex
+\begin{gathered}
+\nonumber k_1=x_1^2+y_1^2 \quad \quad k_5=y_1-y_3 \quad \quad k_9=x_2-x_3\\
+\nonumber k_2=x_2^2+y_2^2 \quad \quad k_6=y_2-y_3 \quad \quad k_{10}=x_1^2\\
+\nonumber k_3=x_3^2+y_3^2 \quad \quad k_7=x_1-x_2 \quad \quad k_{11}=x_2^2\\
+\nonumber k_4=y_1-y_2 \quad \quad k_8=x_1-x_3 \quad \quad k_{12} = x_3^2
+\end{gathered}
+\end{equation*}
+Polohu stredu kružnice $S$ voči hrane $e$ určíme už vyššie uvedeným spôsobom.
+
+Ak vyhovujúci Delaunayho bod $\underline{P}$ nebol nájdený, tak sa otočí orientácia hrany $e$ a vyhľadávanie bodu sa opakuje, opäť v ľavej polrovine ak uvažujeme už novú orientáciu hrany. Po nájdení \linebreak bodu $\underline{P}$ dostávame prvý trojuholník tvorený troma hranami:
+\begin{equation*}
+\begin{gathered}
+\nonumber e = (P_1, P_2), e_2 = (P_2, \underline{P}), e_3 = (\underline{P}, P_1)\\
+\nonumber \triangle (P_1, P_2, \underline{P})
+\end{gathered}
+\end{equation*}
+Tieto tri hrany pridáme do pomocnej dátovej štruktúry \textit{Active Edge List} ($AEL$) a zároveň tieto hrany budú tvoriť výslednú trianguláciu $DT$. Následne sa z $AEL$ vezme (a zmaže) posledná pridaná hrana, prehodí sa jej orientácia a vyhľadá sa pre ňu Delaunayho bod $\underline{P}$. Ak je nájdený, vytvoria sa ďalšie dve nové hrany. Tieto dve hrany, spoločne s tou, ktorá bola vzatá z $AEL$ a preorientovaná, budú tvoriť trianguláciu $DT$. \newline
+Následne je ale nutné rozhodnúť, či tieto dve nové hrany budú pridané aj do $AEL$. Pri pridávaní hrany $e = (P_i,P_j)$ do $AEL$ dochádza ku kontrole, či $AEL$ už neobsahuje túto hranu ale s opačnou orientáciou, tj. $e' = (P_j, P_i)$. Ak áno, hrana $e'$ je z $AEL$ odstránená. Ak nie, hrana $e$ je pridána do $AEL$. \newline
+Ak pre aktuálnu hranu nebol nájdený Delaunayho bod $\underline{P}$, tak to znamená, že hrana je súčasťou konvexného obalu a je pridaná do výslednej triangulácie $DT$. 
+
+Opísaný postup končí vo chvíli, kedy $AEL$ je prázdne. Vďaka udržiavaniu orientácie hrán v
+jednom smere na hranici aktuálnej triangulácie uloženej v $AEL$ hľadáme Delaunayho bod $\underline{P}$ vždy naľavo od orientovaných hrán.
+\newpage
+
+\noindent Inkrementálna konštrukcia Delaunayho triangulácie sa dá formálne zapísať nasledovne: 
+\begin{algorithm}
+    \caption {\textit{Inkrementálna konštrukcia Delaunayho triangulácie}}
+    \begin{algorithmic}[1]
+        \State Inicializuj $DT$ a $AEL$ ako prázdne listy: $DT$, $AEL =$ [ ].
+        \State Nájdi bod $P_1$ s minimálnou $x$ súradnicou: $P_1 =$ min$(X_i)$.
+        \State Nájdi bod $P_2$ s minimálnou Euklidovou vzdialenosťou ku $P_1$: 	$\|P_2 - P_1\|_2 =$ min. 
+        \State Vytvor prvú hranu $e = (P_1, P_2)$.
+        \State Nájdi Delaunayho bod $\underline{P}$: $\underline{P} = \text{arg min}_{\, \forall P_i(e) \in \sigma_L} \; \; r'(k_i), \quad \, k_i = (e, P_i), \; \; P_i(e) \in \sigma_L$
+        \State Ak $\nexists \underline{P}$, prehoď orientáciu hrany $e$: $e = (P_2, P_1)$ a zopakuj bod 5.
+        \State Vytvor zvyšné dve hrany prvého trojuholníku: $e_2 = (P_2, \underline{P})$, $e_3 = (\underline{P}, P_1)$.
+        \State Pridaj hrany $e$, $e_2$, $e_3$ do $AEL$: $AEL \gets e$, $e_2$, $e_3$.
+        \State Pridaj hrany $e$, $e_2$, $e_3$ do $DT$: $DT \gets e$, $e_2$, $e_3$.
+        \State Pokým $AEL \ne \varnothing$:
+        \State \indent Vezmi a zmaž poslednú hranu z $AEL$: $e(P_a, P_b) = $ AEL.pop()
+        \State \indent Prehoď jej orientáciu: $e = (P_b, P_a)$.
+        \State \indent Nájdi Delaunayho bod $\underline{P}$: $\underline{P} = \text{arg min}_{\, \forall P_i(e) \in \sigma_L} \; \; r'(k_i), \quad \, k_i = (e, P_i), \; \; P_i(e) \in \sigma_L$
+        \State \indent Ak $\exists \underline{P}$:
+        \State \indent \indent Vytvor ďalšie dve hrany nového trojuholníku: $e_2 = (P_b, \underline{P}), e_3 = (\underline{P}, P_a)$
+        \State \indent \indent Pridaj hrany $e$, $e_2$, $e_3$ do $DT$: $DT \gets e$, $e_2$, $e_3$.
+        \State \indent \indent Prehoď orientáciu hrán $e_2$, $e_3$: $e_2 = (\underline{P}, P_b)$, $e_3 = (P_a, \underline{P})$.
+        \State \indent \indent Ak $e_2$ alebo $e_3 \in AEL$, zmaž $e_2$ alebo $e_3$ z $AEL$.
+        \State \indent \indent V inom prípade: Zmeň orientáciu $e_2$ alebo $e_3$ a pridaj $e_2$ alebo $e_3$ do $AEL$.
+    \end{algorithmic}
+\end{algorithm}
+\section{Konštrukcia vrstevníc}
+Vrstevnice boli skonštruované lineárnou interpoláciou, ktorá predpokladá lineárny spád terénu medzi bodmi a vo výsledky aj rozostup vrstevníc je rovnaký, čo len ťažko môže vystihovať reálny povrch. Riešenie je založené na analytickej geometrií, kedy hľadáme priesečnicu roviny \linebreak trojuholníku $T$ tvoriaceho trianguláciu $DT$ a vodorovnej roviny $\rho$ s výškou $h$.\newline
+Nech máme trojuholník $T$ s hranami $e_{i}$, $e_{i+1}$, $e_{i+2}$ a rovinu vrstevnice $\rho$ o výške $z$. Medzi hranou trojuholníka $e_i$ a rovinou vrstevnice $\rho$ nás zaujímajú dva vzťahy:
+\begin{itemize}
+    \item \parindent Hrana $e_i$ náleží rovine $\rho$, vtedy platí
+        \begin{equation*}
+            (z - z_i)(z - z_{i+1})=0
+        \end{equation*}
+        Ak hrana trojuholníka $T$ náleží $\rho$, táto hrana je vrstevnicou. \newline
+        Ak všetky hrany trojuholníka $T$ náležia $\rho$, tak pre takýto $T$ nie je nutné riešiť vrstevnice.
+        
+    \item \parindent Hrana $e_i$ pretína rovinu $\rho$, vtedy platí
+        \begin{equation*}
+            (z - z_i)(z - z_{i+1})<0
+        \end{equation*}
+        V tomto prípade rovina $\rho$ musí pretnúť dve hrany, vzniknú dva priesečníky. Spojením vypočítaných priesečníkov vznikne vrstevnica. Je teda nutné vypočítať polohu priesečníkov hrany $e_i = (P_1, P_2)$ a roviny vrstevnice $\rho$ o výške $z$. Ak $P_1 = [x_1, y_1, z_1]$, $P_2 = [x_2, y_2, z_2]$, potom súradnice $x$, $y$ priesečníku spočítame ako: 
+            \begin{equation*}
+            \openup 1ex
+            \begin{gathered}
+            x = \frac{x_2-x_1}{z_2-z_1}(z-z_1)+x_1,\\
+            y = \frac{y_2-y_1}{z_2-z_1}(z-z_1)+y_1
+            \end{gathered}
+            \end{equation*}
+        
+\end{itemize}
+
+
+\section{Analýza sklonu}\label{sklon}
+Sklon je uhol $\varphi$ medzi zvislicou (normálový vektor (0,0,1)) a normálovým vektorom roviny trojuholníku z $DT$. Rovina trojuholníku $T_i \in DT$ je určená trojzložkovými vektormi $\vec{u} = (u_1, u_2, u_3)$ a $\vec{v} = (v_1, v_2, v_3)$. Nech $T_i$ má vrcholy $P_1 = [x_1, y_1, z_1]$, $P_2 = [x_2, y_2, z_2]$, $P_3 = [x_3, y_3, z_3]$, potom:
+\begin{equation*}
+\begin{gathered}
+\nonumber \vec{u} : \; \; u_1 = x_2-x_1, \quad \quad u_2 = y_2-y_1, \quad \quad u_3 = z_2-z_1;\\
+\nonumber \vec{v} : \; \; v_1 = x_3-x_1, \quad \quad v_2 = y_3-y_1, \quad \quad v_3 = z_3-z_1.
+\end{gathered}
+\end{equation*}
+Normálový vektor roviny trojuholníku $n_T = (a, b, c)$ následne spočítame ako $\vec{u} \times \vec{v}$:
+\begin{equation*}
+\nonumber a = u_2v_3, \quad \quad b = -(u_1v_3 - u_3*v_1), \quad \quad c = u_1v_2 - u_2v_1.\\
+\end{equation*}
+Po spočítaní normy $\lVert\vec{n_T}\rVert$ známym vzorcom nasleduje samotný výpočet sklonu
+\begin{equation*}
+\cos\varphi=\left|\frac{c}{\lVert\vec{n_T}\rVert}\right|.
+\end{equation*}
+
+\section{Analýza orientácie}
+Orientácia je azimut priemetu normálového vektoru roviny trojuholníku $n_T$ do roviny $x$, $y$
+\begin{equation*}
+n_T=(a, b, 0),
+\end{equation*}
+pričom zložky $a$, $b$ určíme spôsobom uvedením pri výpočte sklonu (kapitola \ref{sklon}). Azimut $A$ vektoru a tým pádom orientáciu trojuholníku napokon určíme zo vzťahu
+\begin{equation*}
+\tan A = \frac{b}{a}.
+\end{equation*}
+
+
+\section{Aplikácia}
+Aplikácia bola vytvorená vo vývojovom prostredí QT 6. Slúži na trianguláciu množiny bodov a vytvorenie polyedrického digitálneho modelu terénu. Implementovaná je aj konštrukcia vrstevníc, analýza sklonu a orientácie.
+
+\noindent Užívateľské rozhranie je veľmi jednoduché a intuitívne. Prevažnú časť okna aplikácie tvorí zobrazovacia plocha, na ktorej sa vizualizujú do aplikácie nahrané dáta a jednotlivé výsledky. Aplikácia v hornej lište obsahuje menu, pod menu tlačidla rýchlej voľby.
+
+\noindent Vstupné dáta užívateľ do aplikácie nahrá cez \textit{File -- Open .TXT} alebo tlačidlom \textit{Open .TXT}. Po kliknutí naň vyskočí pop-up okno s možnosťou prehliadať súbory v PC. Je nutné zvoliť TXT súbor súradníc X, Y, Z bodov. Stĺpce súradníc musia byť oddelené TAB alebo stredníkom.
+
+\noindent Po nahratí dát užívateľ môže pristúpiť k triangulácií a to cez \textit{Analyze -- Create DT} alebo opäť aj tlačidlom \textit{Create DT}. Rovnakou cestou je možné vyvolať aj zvyšné analýzy. Tieto analýzy je možné vykonať aj bez nutnosti (manuálne) spustiť trianguláciu, pretože pri dotaze na analýzu sa triangulácia vytvorí automaticky.
+
+\noindent Ďalšou položkou sú \textit{Settings}, v ktorých užívateľ môže nastaviť základný interval generovaných vrstevníc a interval v ktorom sa majú vrstevnice generovať.
+
+\noindent Posledné tlačidlo \textit{Refresh} resetuje zobrazovaciu plochu.
+
+\begin{figure}[h]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=15.0cm, height=8.5cm]{images/app.png}
+\caption{Rozhranie aplikácie s načítanými vstupnými dátami.}
+\label{fig:obr1}
+\end{figure}
+
+
+\newpage
+\section{Zhodnotenie}
+V prvom rade na testovacích dátach bola porovnaná výsledná triangulácia, sklon a orientácia vykonaná našou aplikáciou s trianguláciou a analýzami vykonanými v ArcGIS. Ak porovnávame samotnú trianguláciu (pozri Obr. \ref{fig:obr2}, Obr. \ref{fig:obr3}), nedá sa povedať, že by boli úplne totožné, ale v niektorých miestach nachádzame totožné výsledky (trojuholníky), čo síce zo samotnej vizualizácie triangulácie nemusí byť zrejmé. Ak porovnávame analýzy sklonu medzi aplikácou a ArcGIS, kde samotné trojuholníky sú vplyvom zafarbenia lepšie rozlíšiteľné, totožné trojuholníky medzi týmito dvoma výstupmi môžeme ľahko pozorovať. Čo sa týka samotnej analýzy sklonu, výsledky medzi aplikáciou a ArcGIS sú až na niektoré výnimky rovnaké (pozri Obr. \ref{fig:obr4}, Obr. \ref{fig:obr5}). Takéto rozdiely môžu byť spôsobené tým, že legenda (intervaly a farby) v aplikácií nie je úplne totožná s tou z ArcGIS. Takisto vrstevnice vygenerované aplikáciou odpovedajú tým z ArcGIS (pozri Obr. \ref{fig:obr6}, Obr. \ref{fig:obr7}). Takisto ak porovnávame orientáciu medzi výstupom z aplikácie a ArcGIS, na mnohých miestach sa výsledky zhodujú, avšak nie na všetkých. Nájdené rozdiely sa nepodarilo nijak zovšeobecniť, na každom mieste je rozdiel v orientácií individuálny (pozri Obr. \ref{fig:obr8}, Obr. \ref{fig:obr9}).
+
+Samotná kvalita triangulácie a analýz bola zhodnotená pre tri terénne tvary a to údolie, hrebeň a kopa.
+\subsection{Údolie}
+Údolie bolo nasimulované pomocou vytvorených dát, a to tak, že v strede je rovinná oblasť a smerom ku obidvom krajom nadmorská výška bodov stúpa (rovnomerne na oboch stranách). Pri tomto terénnom tvare vrstevnice sú zobrazené korektne (pozri Obr. \ref{fig:obr10}), takisto sklon (pozri Obr. \ref{fig:obr11}). Čo sa týka samotnej triangulácie, tá je v rovinnej časti údolia nejednoznačná, čo je spôsobené aj tým, že sa jedná o grid. Orientácia v stredovej rovinnej časti je problémová, čo je spôsobené tým, že pri výpočte (a stanovení) orientácie neuvažujeme rovinu (pozri Obr. \ref{fig:obr12}.
+
+\subsection{Hrebeň}
+Hrebeň je tvar podobný údoliu s tým rozdielom, že výšky od stredovej rovinnej oblasti ku okrajom nestúpajú ale klesajú. Tým pádom platia rovnaké závery ako pri údoliu, tj. triangulácia v stredovej rovinnej časti nejednoznačná, vrstevnice a sklon správne, orientácia je problémová. Závery nie je nutné demonštrovať na obrázkoch.
+\newpage
+\subsection{Kopa}
+Na demonštráciu výsledkov pre kopu boli zvolené geografické dáta z Lužických hôr. Keďže sa jedná o reálne dáta z prírody, kopa prirodzene nie je úplne tvarovo dokonalá. Triangulácia, vrstevnice, sklon a orientácia vychádza pri tomto terénnom tvare veľmi dobre a nepozorujeme nijaké vážnejšie nedostatky (pozri Obr. \ref{fig:obr13}, Obr. \ref{fig:obr14}, Obr. \ref{fig:obr15}).
+
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=13cm, height=9.0cm]{images/triangl_app.png}
+\caption{Triangulácia vytvorenou aplikáciou.}
+\label{fig:obr2}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/triangl_gis.png}
+\caption{Triangulácia vykonaná softvérom ArcGIS.}
+\label{fig:obr3}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/slope_app.png}
+\caption{Analýza sklonu vykonaná aplikáciou.}
+\label{fig:obr4}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/slope_gis.png}
+\caption{Analýza sklonu vykonaná softvérom ArcGIS.}
+\label{fig:obr5}
+\end{figure}
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/vrstevnice_app.png}
+\caption{Vygenerované vrstevnice aplikáciou.}
+\label{fig:obr6}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/vrstevnice_gis.png}
+\caption{Vygenerované vrstevnice softvérom ArcGIS.}
+\label{fig:obr7}
+\end{figure}
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/aspect_app.png}
+\caption{Analýza orientácie vykonaná aplikáciou.}
+\label{fig:obr8}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/aspect_gis.png}
+\caption{Analýza orientácie vykonaná softvérom ArcGIS.}
+\label{fig:obr9}
+\end{figure}
+
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/udolie1_upr.png}
+\caption{Vytvorené údolie s vygenerovanými vrstevnicami. Pre lepšie znázornenie výšok v grafickom softvéry doplnené popisky vrstevníc.}
+\label{fig:obr10}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/udolie1_sklon.png}
+\caption{Analýza sklonu pre vytvorené údolie.}
+\label{fig:obr11}
+\end{figure}
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/udolie1_orientacia.png}
+\caption{Analýza orientácie pre vytvorené údolie. (modrá - západ, žltá - východ)}
+\label{fig:obr12}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/kupa1.png}
+\caption{Triangulácia a vrstevnice u kopy.}
+\label{fig:obr13}
+\end{figure}
+
+\begin{figure}[htbp]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=12.5cm, height=9.0cm]{images/kupa1_sklon.png}
+\caption{Analýza sklonu pre kopu.}
+\label{fig:obr14}
+
+\bigskip
+
+\includegraphics[width=12.5cm, height=9.0cm]{images/kupa1_aspect.png}
+\caption{Analýza orientácie pre kopu.}
+\label{fig:obr15}
+\end{figure}
+
+
+\newpage
+\section{Dokumentácia}
+Samotný program bol napísaný v jazyku Python 3.9 v SW PyCharm. Okrem externých modulov QT bol využitý aj modul \texttt{csv}, ktorý slúži na prečítanie CSV súboru. Program pozostáva z piatich tried:
+\begin{enumerate}
+    \item Trieda \texttt{Mainform}: 
+    
+    Metóda \texttt{openFile} inicializuje vloženie vstupných dát do programu. Zisťuje výšku a šírku zobrazovacej plochy aplikácie z dôvodu nutného preškalovania súradníc vstupných dát do súradníc zobrazovacej plochy aplikácie. Hodnoty výšky a šírky predáva metóde \texttt{setPath}.
+    
+    Metóda \texttt{refreshCanvas} slúži na zmazanie všetkých zvizualizovaných objektov na zobrazovacej ploche aplikácie. 
+    
+    Metóda \texttt{runDT} inicializuje výpočet a vizualizáciu Delaunayho triangulácie. 
+    
+    Metóda \texttt{runContourLines} inicializuje výpočet a vizualizáciu vrstevníc. Metóda takisto získava uživateľské parametre, ktoré predáva funkcii na výpočet vrstevníc. V prípade, ak v predošlom kroku nebola vygenerovaná Delaunayho triangulácia, metóda takisto volá funkciu \texttt{runDT}. 
+    
+    Metóda \texttt{runCalculateSlope} inicializuje výpočet a vizualizáciu sklonu. V prípade, ak v predošlom kroku nebola vygenerovaná Delaunayho triangulácia, metóda takisto volá funkciu \texttt{runDT}.
+    
+    Metóda \texttt{runCalculateExposition} inicializuje výpočet a vizualizáciu orientácie roviny. V prípade, ak v predošlom kroku nebola vygenerovaná Delaunayho triangulácia, metóda takisto volá funkciu \texttt{runDT}.
+    
+    Metóda \texttt{showSettings} slúži pre zobrazenie dialogóveho okna, ktoré užívateľovi umožňuje zadávanie parametrov pre výpočet vrstevníc uplatnených v metóde \texttt{runContourLines}.
+    
+    \item Trieda \texttt{Draw}:
+    Je zodpovedná za grafickú stránku aplikácie a zobrazovacej plochy. Trieda obsahuje inicializátor a 9 metód: 
+    
+    \texttt{Inicializátor} má dva pozičné argumenty a inicializuje premenné pre túto triedu. Inicializované sú prázdne listy pre vstupné body, Delaunayho trianguláciu, vrstevnice, sklony a orientáciu rovín ako aj potrebné parametre pre tranformáciu súradníc zobrazovacej plochy aplikácie do reálneho intervalu. 
+    
+    Metódy \texttt{getPoints}, \texttt{getTransformationParameters} a \texttt{getDT} vracajú konkrétne premenné treidy \texttt{Draw}.
+    
+    Metódy \texttt{setDT}, \texttt{setCL}, \texttt{setSlope}, \texttt{setExposition} vyžadujú jeden argument, ktorý je následne metódou priradený konkrétnym premenným triedy \texttt{Draw}. 
+    
+    Metóda \texttt{setPath} má dva argumenty a to výšku a šírku zobrazovacej plochy aplikácie. Do premennej \texttt{points} ukladá vstupné body načítané z \texttt{CSV} alebo \texttt{TXT} súboru. Na prečitanie súboru sa používa externý modul \texttt{csv}. 
+    
+    Z dôvodu rozličného súradnicového systému vstupných dát a zobrazovacej plochy aplikácie vstupné dáta navyše preškálováva. V prvom rade je bod najbližší počiatku súradnicového systému zobrazovacej plochy presunutý do jeho počiatku. Následne sa vykoná normalizácia do intervalu $<0, 1>$ a hodnoty sú vynásobené šírkou a výškou zobrazovacej plochy. Navyše $Y$ súradnice preklápa cez osu $X$. \newline
+    Metóda vracia list bodov.
+    
+    Metóda \texttt{paintEvent} má argument \texttt{QPaintEvent} z modulu \texttt{QtGui}. Dochádza tu ku začiatku vizualizácie na zobrazovacej ploche. Vykreslené sú body, línie ako aj polygony tvorené vstupnými bodmi, ktoré sú sfarbené podľa špecifickej hodnoty extrahovanej z listov \texttt{slopes} a \texttt{exposition}.  
+    
+    \item Trieda \texttt{QPoint3D}:
+    Táto trieda je odvodená z rodičovskej triedy \texttt{QPointF}. Obsahuje \texttt{Inicializátor} a 1 metódu:
+    
+    \texttt{Inicializátor} má 3 argumenty dátového typu \texttt{float}, ktoré predstavujú priestorové súradnice bodu - \texttt{x}, \texttt{y}, \texttt{z}. Hodnota \texttt{z} je defaultne nulová. 
+    
+    Metóda \texttt{getZ} vracia hodnotu premennej \texttt{z}. 
+    
+    \item Trieda \texttt{Edge}:
+    Trieda definuje líniu tvorenú počiatočným a koncovým bodom typu \texttt{QPoint3D}. Obsahuje \texttt{Inicializátor}, 3 metódy a  metódu \texttt{$_eq_$}: 
+    
+    \texttt{Inicializátor} má 2 argumenty typu \texttt{QPoint3D}, ktoré predstavujú počiatočný a koncový bod línie. 
+    
+    Metódy \texttt{getStart} a \texttt{getEnd} vracajú počiatočný alebo koncový bod línie.
+    
+    Metóda \texttt{switch} vracia objekt typu \texttt{Edge} s opačnou orientáciou pôvodnej línie. 
+    
+    Metóda \texttt{$\_\_eq\_\_$} má jeden argument objektového typu \texttt{Edge}. Metóda slúži na porovnanie totožnosti dvoch hrán. Metóda vracia hodnotu \texttt{$True/False$}. 
+    
+    \item Trieda \texttt{Algorithms}:
+    
+    Metóda \texttt{getPointAndLinePosititon} má na vstupe tri argumenty, všetky predstavujú body v dátovom type \texttt{QPoint3D}. Slúži na určenie polohy analyzovaného bodu a priamky. \newline
+    V prvom kroku je definovaná prijateľná odchýlka \texttt{epsilon}, nasleduje výpočet zložiek dvoch vektorov a výpočet vektorového súčinu pomoocu determinantu a testovanie podmienok, do ktorých vstupuje hodnota determinantu a podľa ktorej sa určí pozícia bodu voči priamke. \newline
+    Metóda vracia hodnotu 1 ak je bod v ľavej polrovine, hodnotu 0 ak je bod v pravej polrovine, v prípade kolinearity vráti hodnotu -1.
+    
+    Metóda \texttt{get2LinesAngle} má na vstupe štyri body, opäť všetky v dátovom type \texttt{QPoint}. Slúži na výpočet uhlu dvoch priamok. Opäť sú spočítané dva vektory, ich skalárny súčin a ich norma. \newline
+    Figuruje v nej podmienka, ktorá rieši singularitu analyzovaného bodu na vrchole polygónu, a to na základe nulovej hodnoty jednej z noriem vektorov. Metóda v tomto prípade vracia hodnotu 0.\newline
+    Druhá podmienka slúži na vyhnutie sa prípadu, kedy $\arccos$ uhlu dvoch priamok sa počíta z hodnoty, ktorá je väčšia ako 1. V takomto prípade metóda vracia výslednú hodnotu z $|\arccos(1)|$.\newline
+    Mimo spomenutých prípadov funkcia vracia hodnotu uhlu dvoch priamok v kladných hodnotách.
+    
+    Metóda \texttt{getCircleCenterAndRadius} má na vstupe tri argumenty typu \texttt{QPoint3D}, z krotých je vo funkcii definovaná kružnica. Metóda vracia stred kružnice ako dátový typ \texttt{QPoint3D} a hodnotu polomeru tejto kružnice vo forme \texttt{float}.
+    
+    Metóda \texttt{getNearestPointIdx} má na vstupe argument \texttt{p} typu \texttt{QPoint3D} a list bodov typu \texttt{QPoint3D}. Metóda vracia \texttt{integer} index najbližšieho bodu k vstupnému bodu \texttt{p}. 
+    
+    Metóda \texttt{getDelaunayPointIdx} má na vstupe argument \texttt{e} objektového typu \texttt{Edge} a list bodov typu \texttt{QPoint3D}. Metóda vracia \texttt{integer} index vhodného bodu pre proces generovania Delaunayho triangulácie.
+    
+    Metóda \texttt{DT} má na vstupe list bodov typu \texttt{QPoint3D}. Výstupom metódy je zoznam hrán typu \texttt{Edge}, ktoré tvoria Delaunayho trianguláciu. 
+    
+    Metóda \texttt{updateAEL} má na vstupe argument \texttt{e} objektového typu \texttt{Edge} a zoznam hrán typu \texttt{Edge}. Metóda nevracia nijakú premennú, je potrebná pre spustenie procesu aktualizácie vstupného zoznamu hrán. 
+    
+    Metóda \texttt{getCLpoint} má na vstupe 3 argumenty a to \texttt{$p_1$}, \texttt{$p_2$} typu \texttt{QPoint3D} a argument \texttt{z} typu \texttt{float}. Metóda vracia priesečník hrany Delaunayho trojuholníku a vrstevnice o výške \texttt{z} vo forme \texttt{QPoint3D}. 
+    
+    Metóda \texttt{createCL} má na vstupe 4 argumenty - \texttt{dt} zoznam hrán \texttt{Edge}, ktoré tvoria Delaunayho trianguláciu a argumenty \texttt{zmin}, \texttt{zmax} a \texttt{dz} dátového typu \texttt{float}, ktoré určujú interval a inkrement generovaných vrstevníc. Výstupom metódy je zoznam \texttt{cl} obsahujúci vrstevnice objektového typu \texttt{Edge}. 
+    
+    Metóda \texttt{calculateSlope} má na vstupe 4 argumenty a to zoznam \texttt{dt} obsahujúci hrany Delaunayho triangulácie, \texttt{parameters} dátového typu \texttt{tuple}, výšku a šírku zobrazovacej plochy aplikácie \texttt{width} a \texttt{height} dátového typu \texttt{int}. Metóda vracia zoznam \texttt{slopes}, ktorý obsahuje hodnotu sklonu dátového typu \texttt{float} pre každú plochu Delaunayho triangulácie. 
+    
+    Metóda \texttt{calculateExposition} má na vstupe 4 argumenty a to zoznam \texttt{dt} obsahujúci hrany Delaunayho triangulácie, \texttt{parameters} dátového typu \texttt{tuple}, výšku a šírku zobrazovacej plochy aplikácie \texttt{width} a \texttt{height} dátového typu \texttt{int}. Metóda vracia zoznam \texttt{exposition}, ktorý obsahuje hodnotu orientácie dátového typu \texttt{float} pre každú plochu Delaunayho triangulácie. 
+    
+    
+\end{enumerate}
+
+ 
+\newpage
+\section{Záver}
+Vytvorená aplikácia úspešne implementuje tvorbu Delaunayho triangulácie inkrementálnou konštrukciou čim vytvára polyedrický digitálny model nad vstupnou množinou bodov, načítanou z TXT súboru. Nad takto vytvoreným modelom je schopná generovať vrstevnice lineárnou interpoláciou, analyzovať sklon a orientáciou jednotlivých trojuholníkov.
+
+Najviac problémov bolo s analýzou orientácie. Jej výsledky pravdepodobne nie sú úplne správne. Chyba je zrejme pri prevode súradníc zo zobrazovacej plochy naspäť do pôvodných (vstupných). Takisto zostáva aj mierny nedostatok už z predošlých úloh, kedy vstupné dáta sú mierne deformované z dôvodu roztiahnutia vstupných dát v oboch smeroch do maximálneho možného intervalu.
+
+\section{Použité zdroje}
+Prednášky z predmetu \textit{Algoritmy počítačové kartografie}.
+
+\noindent BRŮHA, L. 2016: Digitální modely terénu. Přírodovědecká fakulta Univerzity Karlovy v Praze.
+
+\noindent LEIFER, V. 2006: Delaunayho triangulace a její aplikace. Diplomová práca. VUT v Brne, FSI ústav automatizace a informatiky.
+
+
+
+\end{document}
