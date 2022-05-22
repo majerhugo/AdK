@@ -1,0 +1,316 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{parskip}
+\renewcommand{\baselinestretch}{1.35}
+\usepackage[slovak]{babel}
+\usepackage{fancyhdr}
+\usepackage{enumitem}
+\usepackage{gensymb}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amssymb, amsfonts}
+\usepackage{graphicx, caption}
+\graphicspath{ {./images/} }
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+
+\title{\textbf{Úkol č. 3: Množinové operácie s polygónmi}}
+\author{Hugo Majer, Júlia Šušková}
+
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%% TITUL %%%%%%%%%%%%%%%%%%%%%%%%
+\pagenumbering{gobble}
+\maketitle
+
+\newpage
+\pagenumbering{arabic}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ZADANIE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Zadanie}
+\textbf{Úloha č. 4: Množinové operace s polygony}
+
+\textit{Vstup: nekonvexní polygony $P$, $Q$,}
+
+\textit{Výstup: množina k polygonů $P'=\{P'_1, ..., P'_k\}$.}
+
+S využitím algoritmu pro množinové operace s polygony implementujte pro dvojici polygonů $P$, $Q$ následující množinové operace:
+\begin{itemize}
+    \item \parindent průnik polygonů,
+    \item \parindent sjednocení polygonů,
+    \item \parindent rozdíl polygonů.
+\end{itemize}
+
+Jako vstupní data použijte existující kartografická či syntetická data reprezentující množiny $P$, $Q$, která budou
+načítána ze dvou textových souborů ve Vámi zvoleném formátu.
+
+Grafické rozhraní realizujte s využitím frameworku QT, výsledky množinových operací vizualizujte.
+
+\section{Údaje o bonusových úlohách}
+Neboli riešené žiadne bonusové úlohy.
+
+\setlength{\parindent}{1cm}
+\newpage
+\section{Množinové operácie polygónov}
+Základné množinové operácie -- zjednotenie, prienik, rozdiel majú veľký význam nielen v matematike, ale aj v oblasti GIS a v kartografii. Na vstupe máme dve množiny, ktoré predstavujú uzavreté, ohraničené oblasti (polygóny) $A$ a $B$.
+
+Zjednotenie $A \cup B$ je taká množina, ktorá obsahuje všetky prvky, ktoré sa nachádzajú aspoň v jednej z množín, ktoré zjednocujeme a žiadne ďalšie prvky. Je to asociatívna a komutatívna operácia.
+
+Prienik $A \cap B$ je taká množina, ktorá obsahuje práve tie prvky množiny $A$, ktoré sú súčasne prvkami množiny $B$. Je to asociatívna a komutatívna operácia.
+
+Rozdiel $A \cap \overline{B}$, resp. $B \cap \overline{A}$ je taká množina, ktorá obsahuje každý prvok, ktorý se nachádza v prvej množine, ale nenachádza se v druhej a žiadne ďalšie prvky. Nie je to ani asociatívna ani komutatívna operácia.
+
+
+
+\subsection{Problémové situácie}\label{singularity}
+V prípade vstupu dvojice polygónov do množinovej operácie je prvou singularitou, ktorá sa môže vyskytnúť, kolinearita hrán, tj. spoločná hrana vstupných polygónov, alebo len jej časť. Výsledkom zjednotenia by táto kolineárna hrana byť nemala. V prípade prieniku by výsledkom bola práve táto kolineárna hrana. Pri rozdiele je výsledkom jeden zo vstupných polygónov.
+
+Môže nastať aj situácia, kedy polygóny majú spoločný vrchol, resp. vrcholy, alebo vrchol polygónu leží na hrane druhého polygónu. V prípade zjednotenia by výsledkom mali byť oba polygóny. Pri prieniku by výsledkom mal byť práve ten spoločný vrchol, resp. vrcholy, čiže bod(y). 
+
+\noindent Spomínané singularity \textbf{neboli} v rámci tejto práce riešené a ošetrené.
+
+
+\newpage
+\section{Popis algoritmu}
+Na vstupe do algoritmu máme dva polygóny $A=\{P_i\}_{i=1}^n$ a $B=\{Q_j\}_{j=1}^m$, ktorých prvý a posledný bod je totožný a majú CCW orientáciu. Základom algoritmu je nový dátový typ s názvom \texttt{QPointFB}, ktorý obsahuje informáciu o parametroch $\alpha$, $\beta$, ktoré popisujú polohu priesečníku dvoch hrán v rámci týchto dvoch hrán. Takisto nesie informáciu o polohe bodu voči polygónu. 
+
+\noindent Samotný algoritmus pozostáva z viacerých častí.
+
+
+\subsection{Výpočet priesečníkov}\label{vyp_pries}
+Pozostáva z prechádzania všetkých hrán polygónov $A$, $B$ a počíta sa ich priesečník $b_{ij}$, ak existuje. Najprv je nutné poznať vzájomnú pozíciu, resp. vzťah týchto dvoch hrán, nakoľko nás zaujímajú len tie, ktoré sa pretínajú. Máme dve hrany $e(P_i, P_{i+1})$, $f(Q_j, Q_{j+1})$. Stanovme, že $P_i=[x_i, y_i]$, $P_{i+1}=[x_{i+1}, y_{i+1}]$, $Q_j=[x_j, y_j]$, $Q_{j+1}=[x_{j+1}, y_{j+1}]$. Potrebujeme spočítať smerové vektory \linebreak $\vec{u}$, $\vec{v}$ a $\vec{w}$
+\begin{align}
+    \nonumber&\vec{u}=(x_{i+1}-x_i, y_{i+1}-y_i),\\
+    \nonumber&\vec{v}=(x_{j+1}-x_j, y_{j+1}-y_j),\\
+    \nonumber&\vec{w}=(x_i-x_j, y_i-y_j).
+\end{align}
+Následne zo zložiek vektorov spočítame determinanty $k_1$, $k_2$, $k_3$
+\begin{align}
+\nonumber& k_1=\begin{vmatrix} v_x & v_y \\ w_x & w_y  \end{vmatrix}=v_x*w_y - v_y*w_x,\\
+\nonumber& k_2=\begin{vmatrix} u_x & u_y \\ w_x & w_y  \end{vmatrix}=u_x*w_y - v_y*w_x,\\
+\nonumber& k_3=\begin{vmatrix} u_x & u_y \\ v_x & v_y  \end{vmatrix}=u_x*v_y - u_y*v_x.
+\end{align}
+Z determinantov spočítame parametre $\alpha$, $\beta$
+\begin{equation*}
+\alpha=\frac{k_1}{k_3}, \quad \quad \beta=\frac{k_2}{k_3}.
+\end{equation*}
+Ak $k_1 = 0$, $k_2=0$, $k_3=0$, tak hrany $e$, $f$ sú kolineárne, priesečník neexistuje. \newline
+Ak $(k_1=0 \land k_2=0)$, tak hrany $e$, $f$ sú rovnobežné, priesečník neexistuje. \newline 
+Priesečník existuje ak $(0 \leq \alpha \leq 1) \land (0 \leq \beta \leq 1)$. Následne je nutné spočítať jeho súradnice $x$, $y$
+\begin{align}
+\nonumber &x = x_i + \alpha u_x,\\
+\nonumber &y = y_i + \alpha u_y.
+\end{align}
+V každom inom prípade sú hrany $e$, $f$ mimobežné.
+
+\subsection{Vloženie priesečníkov do polygónov}
+V predošlom kroku môžu nastať situácie, kedy hrana $f$ polygónu $B$ pretína hranu $e$ polygónu $A$ najviac jedenkrát alebo situácia, kedy hrana $e$ polygónu $A$ môže byť pretnutá viacerými \linebreak hranami $f_i$ polygónu $B$. Je teda nutné testovať hranu polygónu $A$ voči všetkým hranám \linebreak polygónu $B$. 
+
+Ak existuje priesečník $b_{ij}$, pre polygón $B$ bude spracovaný priamo, tj. pridaný do polygónu $B$ na pozíciu $i+1$, tj. medzi body $Q_{i}$ a $Q_{i+1}$. Pre polygón $A$ nie je ešte možné priesečník $b_{ij}$ pridať medzi $P_{i}$ a $P_{i+1}$. Priesečník musí byť pridaný do pomocnej štruktúry -- slovníku $D(\alpha) = (\alpha_i, b_{ij})$, pretože ešte nepoznáme všetky priesečníky. Po nájdení všetkých priesečníkov sa hromadne aktualizuje polygón $A$, tj. slovník $D(\alpha)$ pridaný medzi body $P_{i}$ a $P_{i+1}$.
+
+\noindent Doposiaľ vysvetlený postup algoritmu pseudokódom zapíšeme nasledovne:
+\begin{algorithm}
+    \caption {\textit{Nájdenie priesečníkov a vloženie priesečníkov do polygónov (A, B)}}
+    \begin{algorithmic}[1]
+        \State Inicializuj $i = 0$.
+        \State Pokým $i <$ length($A$):
+        \State \indent $D(\alpha) = \{\}$ \quad \quad \# Vytvorenie slovníku 
+        \State \indent Inicializuj $j = 0$.
+        \State \indent Pokým $j <$ length($B$):
+        \State \indent \indent Nájdi priesečník $b_{ij}$. \quad \quad \# Detailne popísané v kap. \ref{vyp_pries}  
+        \State \indent \indent Ak $\exists b_{ij} = (P_i, P_{i+1}) \cap (Q_j, Q_{j+1})$:
+        \State \indent \indent \indent $D(\alpha_i) \gets b_{ij}$. \quad \quad \# Pridaj priesečník do $D$
+        \State \indent \indent \indent $j$ += 1 \quad \quad \# Inkrementuj pozíciu v rámci $B$
+        \State \indent \indent \indent $B \gets (j, b_{ij})$ \quad \quad \# Vlož priesečník na pozíciu $j+1$ do $B$
+        \State \indent \indent $j$ += 1.
+        \State \indent Ak $D(\alpha) \ne \varnothing$: \quad \quad \# Bol nájdený priesečník
+        \State \indent \indent Pre $\forall$ ($key$, $value$)  $\in D(\alpha)$: \quad \quad \# Prechádzaj všetky prvky (priesečníky) v $D$
+        \State \indent \indent \indent $i$ += 1. \quad \quad \# Inkrementuj pozíciu v rámci $A$
+        \State \indent \indent \indent $b_{ij} \gets value$ \quad \quad \# Druhá hodnota z páru v $D$ je priesečník
+        \State \indent \indent \indent $A \gets (i, b_{ij})$ \quad \quad \# Vlož priesečník na pozíciu $i+1$ do $A$
+        \State \indent $i$ += 1.
+    \end{algorithmic}
+\end{algorithm}
+\newpage
+
+\subsection{Ohodnotenie vrcholov polygónov} \label{position}
+Spočíva v určení polohy hrany jedného polygónu voči druhému polygónu. Prvým krokom je spočítanie stredového bodu $\overline{P}$ hrany $e(P_i, P_{i+1})$ (patriacej polygónu $A$) a analogicky bodu $\overline{Q}$ pre \linebreak hranu $f(Q_i, Q_{i+1})$. Každému $\overline{P} \in A$ určujeme polohu voči polygónu $B$, každému $\overline{Q} \in B$ voči polygónu $A$. Jednotlivé hrany polygónov tým pádom budú rozdelené na vnútorné a vonkajšie. Táto informácia je uložená do počiatočného bodu každej hrany. Ak by sme chceli riešiť singularity uvedené v kapitole \ref{singularity}, je nutné rozlíšiť aj stav na hrane polygónu. Nakoľko sa práca singularitám nevenuje, v samotne implementácií algoritmu si postačíme len s rozlíšením hrán na vnútorné/vonkajšie.
+\begin{equation*}
+\text{pos}\,(e_i, B)=\text{pos}\,(\overline{P_i}, B) =
+\begin{cases}
+    \overline{P_i} \in B,\\
+    \overline{P_i} \in \partial B,\\
+    \overline{P_i} \notin B,
+\end{cases} \quad \quad
+\text{pos}\,(f_i, A)=\text{pos}\,(\overline{Q_i}, A) =
+\begin{cases}
+    \overline{Q_i} \in A,\\
+    \overline{Q_i} \in \partial A,\\
+    \overline{Q_i} \notin A.
+\end{cases}
+\end{equation*}
+S požiadavkou stanovenia polohy stredového bodu hrany voči polygónu sa vraciame ku starému známemu \textit{Point in Polygon Test}. \newline
+\textit{Poznámka}: V rámci tejto práce bol využitý \textit{Winding Number Algorithm}, ktorý bol detailne popísaný v predošlom úkole a nie je popisovaný znova.
+\begin{algorithm}
+    \caption {\textit{Ohodnotenie vrcholov polygónov (A, B)}}
+    \begin{algorithmic}[1]
+        \State Pre $\forall$ hrany $e_i(P_i, P_{i+1})$ polygónu $A$:
+        \State \indent Nájdi stredový bod $\overline{P}$: $\overline{P} = 0,5(P_i + P_{i+1})$.
+        \State \indent Zisti pozíciu $\overline{P}$ voči polygónu $B$.
+        \State \indent Nastav zistenú pozíciu počiatočnému bodu hrany $e_i(P_i, P_{i+1})$.
+        
+        \State Pre $\forall$ hrany $f_i(Q_i, Q_{i+1})$ polygónu $B$:
+        \State \indent Nájdi stredový bod $\overline{Q}$: $\overline{Q} = 0,5(Q_i + Q_{i+1})$.
+        \State \indent Zisti pozíciu $\overline{Q}$ voči polygónu $A$.
+        \State \indent Nastav zistenú pozíciu počiatočnému bodu hrany $f_i(Q_i, Q_{i+1})$.
+    \end{algorithmic}
+\end{algorithm}
+
+
+\subsection{Výber hrán podľa pozície}
+Dochádza k výberu hrán z oboch polygónov, ktoré majú voči druhému polygónu určitú pozíciu, ktorá bola určená v predošlom kroku. Zadaná pozícia je daná typom množinovej operácie, ktorú chceme vykonať. V rámci tohto kroku dochádza ku prechádzaniu cez všetky vrcholy polygónu (cez vrcholy, pretože pozícia hrany bola ukladaná do počiatočného bodu hrany), ak sa pozícia bodu rovná zadanej pozícií, tak z tohto bodu a z nasledujúceho je vytvorená hrana. Tieto hrany budú výsledkom, tj. budú to hrany výsledného polygónu po aplikácií danej množinovej operácie.
+
+V prípade operácie zjednotenia sú z polygónu $A$, resp. polygónu $B$ vybrané hrany, ktoré sú mimo polygónu $A$, resp. polygónu $B$. V prípade operácie prieniku sú z polygónu $A$, resp. polygónu $B$ vybrané hrany, ktoré sú vnútri polygónu $A$, resp. polygónu $B$. V prípade operácie rozdielu A-B sú z polygónu $A$ vyberané hrany mimo polygónu $B$ a z polygónu $B$ hrany, ktoré sú vo vnútri polygónu $A$. Presne opačne to platí pre operáciu B-A.
+
+\begin{algorithm}
+    \caption {\textit{Výber hrán podľa pozície voči $A$/$B$ z polygónu $A$/$B$}}
+    \begin{algorithmic}[1]
+        \State Pre $\forall$ vrcholy $P_i$ polygónu $A$:
+        \State \indent Ak jeho pozícia $\equiv$ zadaná pozícia: \quad \quad \# Zadaná pozícia podľa požadovanej operácie
+        \State \indent \indent Vytvor hranu $(P_i, P_{i+1})$.
+        
+        \State Pre $\forall$ vrcholy $Q_i$ polygónu $B$:
+        \State \indent Ak jeho pozícia $\equiv$ zadaná pozícia: \quad \quad \# Zadaná pozícia podľa požadovanej operácie
+        \State \indent \indent Vytvor hranu $(Q_i, Q_{i+1})$.
+    \end{algorithmic}
+\end{algorithm}
+
+\newpage
+\section{Aplikácia}
+Aplikácia bola vytvorená vo vývojovom prostredí QT 6. Slúži na vykonanie množinových operácií zjednotenie, prienik, rozdiel dvoch uzavretých, ohraničených oblastí (polygónov). Užívateľské rozhranie je veľmi jednoduché a intuitívne. Prevažnú časť okna aplikácie tvorí zobrazovacia plocha, na ktorej sa vizualizujú do aplikácie nahrané dáta a výsledky operácií.
+
+Vstupné dáta užívateľ do aplikácie nahrá z textového súboru obsahujúceho súradnice $X$, $Y$ \linebreak vrcholov jedného polygónu. Súradnice musia byť v súradnicovom systéme zobrazovacej plochy. Súradnice vrcholov druhého polygónu sú importované z druhého textového súboru. Na rozlíšenie, ktorý polygón je práve z textového súboru importovaný, je použité tlačidlo \textit{SWITCH A/B}. Pod týmto tlačidlom sa nachádza aj indikátor, ktorý polygón je práve zvolený a ktorý bude teda importovaný.
+
+\noindent Druhou možnosťou je polygóny nakresliť a to priamočiaro -- klikaním na zobrazovaciu plochu. Opäť po nakreslení prvého polygónu je nutné kliknúť na tlačidlo \textit{SWITCH A/B} a nakresliť druhý.
+
+Následne užívateľ vyberie z combo-boxu požadovaný typ množinovej operácie a po kliknutí na tlačidlo \textit{CREATE OVERLAY} sa operácia vykoná a zobrazí sa výsledok (zelenou farbou).
+
+Tlačidlo \textit{CLEAR} vráti zobrazovaciu plochu do stavu pred vykonaním množinovej operácie, tj. zostanú na nej len vstupné polygóny. Tlačidlo \textit{CLEAR ALL} okrem výsledku operácie zmaže aj vstupné polygóny.
+
+\begin{figure}[h]
+\captionsetup{justification=centering}
+\centering
+\includegraphics[width=15.0cm, height=8.6cm]{images/aplikacia.png}
+\caption{Rozhranie aplikácie s polygónmi a vykonanou operáciou.}
+\label{fig:obr1}
+\end{figure}
+
+\section{Dokumentácia}
+\begin{enumerate}
+    \item Trieda \texttt{Mainform}: 
+    
+    Metóda \texttt{clickImport} inicializuje vloženie vstupných dát do programu. Metóda volá funkciu \texttt{setPath}. 
+    
+    Metóda \texttt{clickSwitch} slúži pre zmenu importovaného/kresleného polygonu z polygonu A na polygon B. 
+    
+    Metóda \texttt{clickCreateOverlay} inicializuje výpočet množinových operácií a vizualizáciu výsledku. 
+    
+    Metóda \texttt{clickClear} slúži na zmazanie výsledku konkrétnej množinovej operácie. 
+    
+    Metóda \texttt{clickClearAll} slúži na zmazanie výsledkov ako aj vložených dát.
+
+    
+    \item Trieda \texttt{Draw}:
+    Je zodpovedná za grafickú stránku aplikácie a zobrazovacej plochy. Trieda obsahuje inicializátor a 8 metód: 
+    
+    \texttt{Inicializátor} má dva pozičné argumenty a inicializuje premenné pre túto triedu. Inicializované sú prázdne listy pre vstupné body polygonov A a B, list pre výsledky množinových operácií a premennú slúžiacu k aktivácii polygonu B z polygonu A. 
+    
+    Metóda \texttt{switchPolygon} slúži k aktivácii zmeny z polygonu A na polygon B.
+    
+    Metóda \texttt{getPolygons} vracia konkrétne premenné triedy \texttt{Draw}.
+    
+    Metóda \texttt{setResults} vyžaduje jeden argument, ktorý je následne metódou priradený konkrétnej premennej triedy \texttt{Draw}. 
+    
+    Metóda \texttt{clearResults} slúźi k zmazaniu dát v premennej \texttt{res}.
+    
+    Metóda \texttt{clearCanvas} slúži k zmazaniu dát v premenných \texttt{res}, \texttt{polA}, \texttt{polB}.
+    
+    Metóda \texttt{setPath} slúži k načítaniu vstupných dát. Do premenných \texttt{polA} a \texttt{polB} triedy ukladá vstupné body načítané z \texttt{TXT} súboru. Na prečitanie súboru sa používa externý modul \texttt{csv}. 
+    
+    Metóda \texttt{mousePressEvent} slúži užívateľovi k manuálnemu výberu polygonov pomocou myši priamo na zobrazovacej ploche aplikácie.
+    
+    Metóda \texttt{paintEvent} slúži k vizualizácii polygonov a výsledkov množinových operácií.
+    
+    \item Trieda \texttt{QPointFB}:
+    Táto trieda je odvodená z rodičovskej triedy \texttt{QPointF}. Obsahuje \texttt{Inicializátor} a 4 metódy:
+    
+    \texttt{Inicializátor} má 5 argumentov, z toho 4 dátového typu \texttt{float} a 1 \texttt{enum} odvodenej triedy PointAndPolygonPosition. Argumenty \texttt{x, y} predstavujú priestorové súradnice bodu. Argumenty \texttt{alpha} a \texttt{beta} defaultne nulové. Argument \texttt{pos} je takisto nastaveý defaultne.    
+    
+    Metódy \texttt{getAlpha}, \texttt{getBeta} a \texttt{getPosition} vracajú hodnoty premenných \texttt{aplha, beta, pos}. 
+    
+    Metódy \texttt{setPosition} má jeden argument, ktorý je v metóde priradený premennej \texttt{pos}.  
+    
+    \item Trieda \texttt{Edge}:
+    Trieda definuje líniu tvorenú počiatočným a koncovým bodom typu \texttt{QPointFB}. Obsahuje \texttt{Inicializátor} a 2 metódy: 
+    
+    \texttt{Inicializátor} má 2 argumenty typu \texttt{QPointFB}, ktoré predstavujú počiatočný a koncový bod línie. 
+    
+    Metódy \texttt{getStart} a \texttt{getEnd} vracajú počiatočný alebo koncový bod línie.
+
+
+    \item Trieda \texttt{BooleanOperation}:
+    Trieda je odvodená z triedy \texttt{Enum} a slúži k priradeniu symbolických názvov ku konštantným hodnotám pre 4 množinové operácie - \texttt{Union, Intersection, DifferenceAB, DifferenceBA}. 
+    
+    
+    \item Trieda \texttt{PointAndLinePosition}:
+    Trieda je odvodená z triedy \texttt{Enum} a slúži k priradeniu symbolických názvov ku konštantným hodnotám pre 3 možné pozície bodu voči úsečke - \texttt{LeftHP, RightHP, OnLine}.
+    
+    
+    \item Trieda \texttt{LineAndLinePosition}:
+    Trieda je odvodená z triedy \texttt{Enum} a slúži k priradeniu symbolických názvov ku konštantným hodnotám pre 3 možné pozície dvoch úsečiek - \texttt{Parallel, Skew, Collinear, Intersect}.
+    
+    
+    \item Trieda \texttt{PointAndPolygonPosition}:
+    Trieda je odvodená z triedy \texttt{Enum} a slúži k priradeniu symbolických názvov ku konštantným hodnotám pre 3 možné pozície bodu voči polygonu - \texttt{Inside, Outside, OnBoundary}.
+    
+    
+    \item Trieda \texttt{Algorithms}:
+    Trieda obsahuje matematické metódy, pomocou ktorých sú realizované jednotlivé algoritmy, ktoré sú taktiež zapísané v tejto triede.
+    
+    Metóda \texttt{getPointAndLinePosition} má na vstupe tri argumenty, všetky predstavujú body v dátovom type \texttt{QPointFB}. Slúži na určenie polohy analyzovaného bodu a priamky. V prvom kroku je definovaná prijateľná odchýlka epsilon, nasleduje výpočet zložiek dvoch vektorov a výpočet vektorového súčinu pomocou determinantu a testovanie podmienok, do ktorých vstupuje hodnota determinantu a podľa ktorej sa určí pozícia bodu voči priamke. Metóda vracia hodnotu 1 ak je bod v ľavej polrovine, hodnotu 0 ak je bod v pravej polrovine, v prípade kolinearity vráti hodnotu -1.
+    
+    Metóda \texttt{get2LinesAngle} má na vstupe štyri body, opäť všetky v dátovom type \texttt{QPointFB}. Slúži na výpočet uhlu dvoch priamok. Opäť sú spočítané dva vektory, ich skalárny súčin a ich norma. Metóda vracia absolútnu hodnotu skalárneho súčinu.
+    
+    Metóda \texttt{getPositionPointAndPolygon} má na vstupne jeden bod dátového typu \texttt{QpointFB} a polygon v tvare listu \texttt{QpointFB}. Metóda analyzuje pozíciu bodu voči polygonu - vnútri polygonu, mimo polygonu alebo na hrane polygonu - a vracia hodnotu v dátovom tvare triedy \texttt{PointAndPolygonPosition}.  
+    
+    Metóda \texttt{get2LinesIntersection} má na vstupe 4 body v tvare \texttt{QPointFB} a slúži k výpočtu súradníc priesečníku dvoch úsečiek tvorených vstupnými argumentami. Metóda vracia pozíciu týchto dvoch úsečiek voči sebe v dátovom tvare triedy \texttt{LineAndLinePosition} a v prípade, ak existuje priesečnik, tak tento je vracaný v tvare \texttt{QPointFB}.
+    
+    Metóda \texttt{updateVertices} má na vstupe dva polygonu A a B v tvare listu \texttt{QPointFB}. Slúži k priradeniu nových vrcholov ku aktivovanému polygónu, ktoré vznikli ako priesečníky strán polygonu A a B. metóda nevracia žiadnu hodnotu, avšak aktualizuje už existujúce listy vrcholov vstupných polygonov a zoraďuje ich podľa hodnôt alpha/beta v narastajúcom poradí.
+    
+    Metóda \texttt{setEdgePosition} má na vstupe opäť dva polygony A a B v tvare listu \texttt{QPointFB}. Metóda slúži k uloženiu pozície hrán aktivovaného polygonu voči neaktivovanému polygonu. Pre všetky hrany polygonu je vypočítaný ich stred. Následne sa analyzuje a uloží pozícia tohto stredu voči polygonu B a je uložená pre vrcholy polygonu A v premennej \texttt{pos}.
+     
+    Metóda \texttt{getEdges} má na vstupe tri argumenty - polygon v tvare listu \texttt{QPointFB}, indikátor pozície v tvare triedy \texttt{PointAndPolygonPosition} a zoznam hrán triedy \texttt{Edge}. Metóda priraďuje zoznamu \texttt{edge} hrany, ktorých vrcholy majú určitú pozíciu. 
+    
+    Metóda \texttt{createOverlay} má na vstupe dva polygony v tvare listu \texttt{QPointFB} a indikátor množinovej operácie. Výstup je zoznam hrán, ktoré sú výsledkom určitej množinovej operácie nad vstupnými polygonmi. 
+    
+ 
+    
+\end{enumerate}
+
+
+
+\newpage
+\section{Záver}
+Vytvorená aplikácia úspešne vykonáva množinové operácie zjednotenia, prieniku a rozdielu dvoch polygónov, ktoré užívateľ importuje z dvoch textových súborov so súradnicami vrcholov polygónov, alebo ich nakreslením na zobrazovaciu plochu aplikácie.
+
+Jediný nedostatok aplikácie sa vyskytuje pri operácií zjednotenia, ktorá nie vždy dáva úplne správne výsledky. Z neznámeho dôvodu je v takomto prípade nutné ešte raz (znovu) kliknúť na \textit{CREATE OVERLAY} a výsledok by už mal byť správny.
+
+Námetom na vylepšenie môže byť ošetrenie singularít (viz kapitola \ref{singularity}), ktorých riešenie je bonusovou úlohou, ktorá riešená nebola.
+
+\section{Použité zdroje}
+Prednášky a cvičenia z predmetu \textit{Algoritmy počítačové kartografie}.
+
+
+
+
+\end{document}
