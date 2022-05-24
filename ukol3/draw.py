@@ -191,31 +191,31 @@ class Draw (QWidget):
                 pol.append(p3)
 
                 if self.slopes[idx_slope] >= 0 and self.slopes[idx_slope] < 2:
-                    qp.setBrush(QColor(144, 238, 144, 127)) #lightgreen semi-transparent
+                    qp.setBrush(QColor(229, 229, 229, 127)) #lightgreen semi-transparent
 
                 if self.slopes[idx_slope] >= 2 and self.slopes[idx_slope] < 4:
-                    qp.setBrush(QColor(50, 205, 50, 127))   #limegreen semi-transparent
+                    qp.setBrush(QColor(204, 204, 204, 127))   #limegreen semi-transparent
 
                 if self.slopes[idx_slope] >= 4 and self.slopes[idx_slope] < 6:
-                    qp.setBrush(QColor(0, 128, 0, 127))     #green semi-transparent
+                    qp.setBrush(QColor(178, 178, 178, 127))     #green semi-transparent
 
                 if self.slopes[idx_slope] >= 6 and self.slopes[idx_slope] < 8:
-                    qp.setBrush(QColor(0, 100, 0, 127))     #darkgreen semi-transparent
+                    qp.setBrush(QColor(153, 153, 153, 127))     #darkgreen semi-transparent
 
                 if self.slopes[idx_slope] >= 8 and self.slopes[idx_slope] < 10:
-                    qp.setBrush(QColor(255, 165, 0, 127)) #orange semi-transparent
+                    qp.setBrush(QColor(127, 127, 127, 127)) #orange semi-transparent
 
                 if self.slopes[idx_slope] >= 10 and self.slopes[idx_slope] < 14:
-                    qp.setBrush(QColor(255, 140, 0, 127))   #darkorange semi-transparent
+                    qp.setBrush(QColor(102, 102, 102, 127))   #darkorange semi-transparent
 
                 if self.slopes[idx_slope] >= 15 and self.slopes[idx_slope] < 20:
-                    qp.setBrush(QColor(255, 127, 80, 127))  #coral semi-transparent
+                    qp.setBrush(QColor(76, 76, 76, 127))  #coral semi-transparent
 
                 if self.slopes[idx_slope] >= 20 and self.slopes[idx_slope] < 25:
-                    qp.setBrush(QColor(255, 99, 71, 127))  #tomato semi-transparent
+                    qp.setBrush(QColor(51, 51, 51, 127))  #tomato semi-transparent
 
                 if self.slopes[idx_slope] >= 25 and self.slopes[idx_slope] < 90:
-                    qp.setBrush(QColor(255, 69, 0, 127))   #orange-red semitransparent
+                    qp.setBrush(QColor(25, 25, 25, 127))   #orange-red semitransparent
 
                 qp.drawPolygon(pol)
                 idx_slope += 1
