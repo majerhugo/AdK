@@ -171,13 +171,14 @@ class Ui_MainForm(object):
         #Get points
         points = self.Canvas.getPoints()
 
-        #Create DT
-        a = Algorithms()
-        dt = a.DT(points)
+        if bool(points) != 0:
+            #Create DT
+            a = Algorithms()
+            dt = a.DT(points)
 
-        #Set DT
-        self.Canvas.setDT(dt)
-        self.Canvas.repaint()
+            #Set DT
+            self.Canvas.setDT(dt)
+            self.Canvas.repaint()
 
     def runContourLines(self):
         #Get contour line settings
